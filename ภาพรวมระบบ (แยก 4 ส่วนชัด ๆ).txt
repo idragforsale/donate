@@ -1,0 +1,446 @@
+ภาพรวมระบบ (แยก 4 ส่วนชัด ๆ)
+A) หน้าจอ TV (Display Player)
+
+โหมดเต็มจอ (Chrome / Android TV / mini PC)
+
+ดึง “คิว” จาก Server แบบเรียลไทม์ (WebSocket/SSE)
+
+แสดง:
+
+รูปผู้โดเนต + ชื่อ/ข้อความ
+
+Tag (IG/FB/TikTok/เบอร์/อื่น ๆ)
+
+QR กลาง “สแกนโดเนต”
+
+เอฟเฟกต์ (intro animation / confetti / glow / sound เลือกได้)
+
+B) หน้าโดเนต (Donor Page)
+
+เลือกแพ็กเกจ 1/2/3/4 (ราคา + เวลาแสดง)
+
+อัปโหลดรูป + ใส่แท็กติดต่อ + ข้อความสั้น
+
+จ่ายเงิน → ระบบยืนยัน → เข้าคิวอัตโนมัติ
+
+C) หลังบ้านร้าน (Admin/Staff)
+
+ตั้งค่าร้าน: แพ็กเกจ, เวลาต่อแพ็ก, กฎข้อความ, keyword แบน, เปิด/ปิดฟีเจอร์พิกัด/รูป
+
+คิวตอนนี้ / ถัดไป / ข้าม / แบน / อนุมัติ (ถ้าต้องการ moderation)
+
+ดูรายได้รายวัน/รายเดือน/ตามช่องทาง
+
+D) ระบบชำระเงิน + ตรวจสอบยอด
+
+แนวที่ “งานโปรดักชัน” ควรใช้:
+
+Payment Gateway ที่ให้สถานะชำระเงิน + webhook (ลดสลิปปลอม)
+
+Opn Payments (Omise) รองรับ PromptPay
+
+GB Prime Pay มีเอกสาร QR Cash (สร้าง PromptPay QR)
+
+2C2P รองรับช่องทาง QR/PromptPay และหลายช่องทาง
+
+ถ้าพี่อยาก “ตรวจสลิป” เพิ่ม: KBANK มี Slip Verification API docs (เหมาะเป็นตัวเลือกเสริม/เฉพาะเคส)
+
+
+โครงคิว (หัวใจของระบบ)
+
+ให้คิดคิวเป็น “Job” ที่มีเวลาแสดงชัดเจน
+
+หลักการแนะนำ
+
+ชำระเงินสำเร็จ → สร้าง queue_item สถานะ PENDING
+
+(ถ้ามี moderation) แอดมินกดอนุมัติ → APPROVED
+
+Display Player ดึงรายการถัดไป → PLAYING
+
+ครบเวลา → DONE และเลื่อนไปตัวถัดไป
+
+กันปัญหา “คนโดเนตถี่มาก”
+
+ทำเป็น Priority by package ได้ (เช่น แพ็กใหญ่แทรกได้) หรือ
+
+ทำเป็น Round-robin by amount (ยุติธรรม)
+พี่เลือก policy ได้จาก setting
+
+แพ็กเกจ 1–4 (ตัวอย่างที่ขายง่าย)
+
+Package 1: 50฿ → แสดง 10 วิ
+
+Package 2: 100฿ → แสดง 20 วิ
+
+Package 3: 200฿ → แสดง 40 วิ
+
+Package 4: 500฿ → แสดง 90 วิ + เอฟเฟกต์พิเศษ/เสียง
+
+ทริค: ใส่ “สิทธิพิเศษ” ให้แพ็กบน เช่น glow frame / spotlight / ติด “TOP DONOR” 10 นาที
+ทำให้คนอยากกดแพ็กสูงขึ้น
+
+ความปลอดภัย/ความเสี่ยงที่ต้องใส่ตั้งแต่ MVP (ไม่งั้นร้านกลัว)
+1) Moderation (แนะนำมาก)
+
+เปิดโหมด “อนุมัติก่อนขึ้นจอ” ได้
+
+blacklist คำหยาบ + เบอร์แปลก + ลิงก์
+
+จำกัดตัวอักษร (เช่น 30–60 ตัว)
+
+2) รูปภาพ
+
+จำกัดประเภทไฟล์/ขนาด
+
+ทำ watermark “Donated at <bar>”
+
+เก็บไฟล์นอก webroot + random filename
+
+3) Anti-spam
+
+rate limit ต่อเบอร์/ต่อ IP
+
+1 คนคิวพร้อมกันไม่เกิน N รายการ
+
+4) PDPA แบบเบสิค
+
+checkbox “ยินยอมแสดงรูป/ข้อมูลบนจอ”
+
+ตั้งเวลาลบข้อมูลอัตโนมัติ (เช่น 30–90 วัน)
+
+Database (แบบพอเริ่มทำได้เลย)
+
+ตารางหลักที่พี่ต้องมี:
+
+venues (ร้าน)
+
+packages (1–4: ราคา/วินาที/สิทธิพิเศษ)
+
+donations (order/payment status, amount, channel, ref)
+
+media (image_url, thumbnail_url, approved_flag)
+
+donor_profiles (display_name, message, ig, fb, tiktok, phone_masked)
+
+queue_items (donation_id, venue_id, status, duration_sec, priority, scheduled_at, started_at, ended_at)
+
+payment_events (webhook logs กันพลาด)
+
+Tech stack ที่เข้ากับ Node + MySQL (ทำให้เสถียร)
+
+API: Node (Express/Fastify)
+
+Realtime ไปจอ: WebSocket หรือ SSE
+
+Queue worker: cron/worker (เช่น BullMQ + Redis ถ้ามี) หรือทำใน DB ก็ได้ตอน MVP
+
+Display: Web app fullscreen (Next.js/Vite ก็ได้) เปิดบน TV
+
+Upload: S3-compatible (หรือ local storage ถ้าร้านเดียวก่อน)
+
+MVP ที่ “ทำเสร็จแล้วขายได้” ภายใน 3 เฟส
+เฟส 1 (ขายได้ทันที)
+
+หน้าโดเนต + เลือกแพ็ก + อัปโหลดรูป + ตั้งข้อความ
+
+Admin อนุมัติ
+
+Display player เล่นคิวต่อเนื่อง
+
+สรุปยอดรายวัน
+
+เฟส 2 (ทำให้คนจ่ายเพิ่ม)
+
+เอฟเฟกต์ตามแพ็ก
+
+Leaderboard วันนี้ / Top donor
+
+QR donate แบบ dynamic ต่อ order (กันสลิปมั่ว)
+
+เฟส 3 (ทำให้เป็นสินค้า)
+
+Multi-venue (หลายร้าน)
+
+Role staff หลายคน
+
+หลายช่องทางจ่าย (PromptPay + wallet + card ผ่าน gateway)
+
+ระบบรีพอร์ต/ภาษี/ส่งออกข้อมูล
+
+แนว PubCast Partner / JOMO Bangkok)
+ระบบพี่สามารถทำ “เวอร์ชันที่โฟกัสโดเนตขึ้นจอ” ได้แบบนี้ แต่ให้เรียบง่ายกว่าและทำเงินชัดกว่า
+
+ผมสรุปให้ชัด ๆ ว่า…
+
+ถ้าจะทำแนวนี้ ควรปรับให้เหมาะกับ “จอโดเนตผับ/บาร์” แบบนี้
+🎯 เป้าหมายหลัก
+
+คนสแกน → จ่าย → ขึ้นจอเร็ว
+
+ไม่ซับซ้อน
+
+ภาพใหญ่ ชัด สะใจ
+
+กระตุ้นให้คนโดเนตเพิ่ม
+
+โครง UX ที่ผมแนะนำ (ต่างจากในภาพเล็กน้อย)
+1️⃣ หน้าโดเนต (มือถือ)
+
+แทนที่จะมีหลายเมนูแบบ PubCast
+ผมแนะนำทำแบบนี้:
+
+STEP 1
+
+เลือกแพ็กเกจ
+
+🔥 50 บาท – ขึ้นจอ 10 วิ
+🔥🔥 100 บาท – ขึ้นจอ 20 วิ
+👑 300 บาท – ขึ้นจอ 1 นาที + เอฟเฟกต์พิเศษ
+💎 500 บาท – Spotlight + เสียงพิเศษ
+
+กดเลือก → ไป Step 2
+
+STEP 2
+
+กรอกข้อมูล
+
+ชื่อที่ต้องการแสดง
+
+IG / FB / TikTok (เลือกใส่ได้)
+
+ข้อความสั้น (จำกัด 40 ตัว)
+
+อัปโหลดรูป
+
+→ กด “ชำระเงิน”
+
+STEP 3
+
+ชำระเงิน (PromptPay QR / Gateway)
+
+หลังจ่ายสำเร็จ:
+
+แจ้งว่า “กำลังรอขึ้นจอ ประมาณ 2 คิว”
+
+แสดงลำดับคิวปัจจุบัน
+
+นี่คือจุดที่ทำให้คน “ลุ้น” และสนุก
+
+🖥 หน้า TV (สำคัญที่สุด)
+
+ผมแนะนำ layout แบบนี้ (เรียบกว่าในภาพ)
+
+| 🎉 Spotlight Area |
+| รูปใหญ่เต็ม 60% จอ |
+| |
+| ชื่อ + ข้อความใหญ่ |
+| @IG / TikTok |
+| |
+| 🔁 Next up: ชื่อคนถัดไป |
+| 📲 Scan to Donate QR ใหญ่ |
+ต้องมี:
+
+Animation ตอนเข้า (zoom / glow / flash)
+
+Sound effect (เฉพาะแพ็กสูง)
+
+Countdown มุมเล็ก ๆ
+
+⚠️ จุดต่างจาก PubCast
+
+PubCast เน้น request เพลง / content interaction
+
+ของพี่ควรเน้น:
+👉 “ฉันจ่ายเพื่อให้คนทั้งร้านเห็นฉัน”
+
+ดังนั้น:
+
+ภาพต้องใหญ่
+
+ข้อความต้องชัด
+
+ไม่รก
+
+เอฟเฟกต์ชัด
+
+💰 ศักยภาพรายได้จริง (ตัวเลขเล่น ๆ)
+
+ร้านหนึ่งคืนศุกร์–เสาร์
+
+สมมติ:
+
+คนโดเนต 60 คน
+
+เฉลี่ยคนละ 100 บาท
+
+= 6,000 บาท/คืน
+
+ร้านจะยอมแบ่ง 30–40% ให้พี่ได้สบาย
+
+ถ้าได้ 5 ร้าน = รายได้ passive ดีมาก
+
+🔥 สิ่งที่ทำให้โปรเจคนี้ “เหนือกว่าเจ้าอื่น”
+
+มี moderation กันคำหยาบ
+
+มี anti-spam
+
+ใช้ gateway ไม่ต้องตรวจสลิปเอง
+
+มี leaderboard วันนี้
+
+มี “Top Donor Crown” บนจอ
+
+ถ้าพี่ตั้งใจทำเป็นสินค้า (หลายร้าน / มีแอดมิน / มีรายงาน)
+
+แนะนำใช้ Framework ฝั่งหน้าเว็บครับ
+
+ตัวเลือกที่ “คุ้ม” สำหรับงานนี้
+
+React + Vite (หรือ Next.js ถ้าอยาก SSR/SEO แต่โปรเจคนี้ไม่ค่อยจำเป็น)
+
+หน้าจอ TV: component ชัด ๆ ทำ animation ง่าย
+
+หน้าโดเนต: form + upload + validation ง่าย
+
+หน้าแอดมิน: table / filter / export ทำง่ายขึ้น
+
+ข้อดี: โตง่าย, โค้ดเป็นระบบ, ทำทีม/ต่อยอดได้
+ข้อเสีย: เริ่มต้นช้ากว่าเล็กน้อย
+
+Stack ที่เหมาะสุด (สวย/โตง่าย/production)
+
+Frontend (Donor + Admin): React + Vite + Tailwind
+
+TV Display: React (แยก route /display) + Animation (CSS/Framer Motion)
+
+Backend: Node + Fastify (หรือ Express ก็ได้) + MySQL
+
+Realtime: Socket.IO (ง่ายและนิ่ง)
+
+Upload: local storage ก่อน (ย้าย S3 ทีหลังได้)
+
+Deploy: Nginx + PM2 + SSL (Cloudflare)
+
+Roadmap 4 สัปดาห์ (ทำแล้ว “เปิดร้านได้จริง”)
+✅ Week 1: วางรากฐาน + หน้าหลัก
+
+เป้าหมาย: เข้าโครง, login ได้, flow โดเนตเริ่มได้
+
+Setup repo (monorepo หรือแยก frontend/ backend/)
+
+DB schema v1: venues, packages, donations, queue_items, media, users
+
+API core:
+
+login/admin
+
+list packages
+
+create donation draft
+
+upload image
+
+UI Donor:
+
+เลือกแพ็ก 1–4
+
+กรอกชื่อ/ข้อความ/ช่องทาง
+
+upload รูป
+
+UI Admin:
+
+login
+
+ตั้งค่าแพ็กเกจ / เปิด-ปิด moderation
+
+สิ่งที่ต้องพร้อมปลายสัปดาห์: “กรอกข้อมูล + อัปโหลดรูป” ได้ครบ
+
+✅ Week 2: คิว + TV Display (หัวใจ)
+
+เป้าหมาย: ขึ้นจอได้จริงแบบเรียลไทม์
+
+Queue engine:
+
+สถานะ PENDING / APPROVED / PLAYING / DONE
+
+“approve ก่อนขึ้นจอ” (เปิด/ปิดได้)
+
+Socket.IO:
+
+ส่ง event queueUpdated, nowPlaying
+
+TV Display UI:
+
+layout เต็มจอ
+
+เล่นรายการตามเวลาแพ็กเกจ
+
+animation เข้า/ออก
+
+โชว์ “Next up”
+
+โชว์ QR “สแกนโดเนต” กลางจอ (static ก่อน)
+
+ปลายสัปดาห์: “แอดมินอนุมัติ → ขึ้น TV → เล่นครบเวลา → ไปอันถัดไป” ได้
+
+✅ Week 3: ระบบจ่ายเงิน (เน้นชัวร์) + ปิดช่องโกง
+
+เป้าหมาย: จ่ายแล้วเข้าคิวอัตโนมัติ
+แนะนำใช้ Payment gateway + webhook ตั้งแต่แรก (production จริง)
+
+สร้าง order → ได้ payment link/QR → ผู้ใช้จ่าย
+
+webhook แจ้ง “ชำระสำเร็จ” → ระบบ mark paid → สร้าง queue_item
+
+Admin รายได้:
+
+สรุปยอดวันนี้/เดือนนี้
+
+แยกตามช่องทาง
+
+Anti-abuse:
+
+จำกัดข้อความ/คำหยาบ
+
+rate limit
+
+image validation
+
+ปลายสัปดาห์: “จ่ายเงินจริง → ขึ้นคิว” ได้แบบไม่ต้องตรวจสลิปมือ
+
+✅ Week 4: ขัดเงาให้เปิดร้าน (สวย/นิ่ง/ใช้งานหน้างาน)
+
+เป้าหมาย: เปิดใช้งานจริงในผับ
+
+UI polish:
+
+theme neon/dark
+
+effect ตามแพ็ก (แพ็กสูง: spotlight/confetti)
+
+Admin tools:
+
+ข้าม/แบน/ลบ/หยุดชั่วคราว
+
+queue monitor (สถานะจอ)
+
+Ops:
+
+logging
+
+backup DB
+
+deploy script
+
+health check
+
+ทดสอบหน้างาน:
+
+เน็ตหลุด → จอกลับมาเล่นต่อได้
+
+webhook ดีเลย์ → ไม่ซ้ำบิล/ไม่ซ้ำคิว
+
+ปลายสัปดาห์: พร้อมเปิดร้านจริง
